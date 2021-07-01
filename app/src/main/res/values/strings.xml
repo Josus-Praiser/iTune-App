@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">iTune</string>
+    <string name="offline_msg">You\'re offline \nSearch Locally</string>
+</resources>
