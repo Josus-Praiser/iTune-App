@@ -40,86 +40,90 @@ class MainActivity : AppCompatActivity() {
             ViewModelProvider(this, viewModelProviderFactory).get(MusicViewModel::class.java)
 
 
-        var job: Job? = null
-        etSearchSong.addTextChangedListener { editable ->
-            job?.cancel()
-            job = MainScope().launch {
-                delay(500L)
-                editable?.let {
-                    if (editable.toString()
-                            .isNotEmpty() && ConnectionManager().checkConnectivity(
-                            applicationContext
-                        )
-                    ) {
-                        txtErr.visibility = View.INVISIBLE
-                        viewModel?.getSearchMusic(editable.toString())
-                    } else {
-                        if (editable.toString().isNotEmpty()) {
-                            viewModel?.getArtistBySearch(editable.toString())
-                                ?.observe(this@MainActivity,
-                                    Observer { artists ->
-                                        musicAdapter.differ.submitList(artists)
-                                    })
+        if(ConnectionManager().checkConnectivity(this)){
+            var job: Job? = null
+            etSearchSong.addTextChangedListener { editable ->
+                job?.cancel()
+                job = MainScope().launch {
+                    delay(500L)
+                    editable?.let {
+                        if (editable.toString()
+                                .isNotEmpty() && ConnectionManager().checkConnectivity(
+                                applicationContext
+                            )
+                        ) {
+                            txtErr.visibility = View.INVISIBLE
+                            viewModel?.getSearchMusic(editable.toString())
                         } else {
-                            Toast.makeText(
-                                this@MainActivity,
-                                R.string.offline_msg,
-                                Toast.LENGTH_LONG
-                            ).show()
-                            viewModel?.getSavedMusic()
-                                ?.observe(this@MainActivity, Observer { musics ->
-                                    musicAdapter.differ.submitList(musics)
-                                    Log.d(TAG, musics.toString())
-                                })
-                        }
+                            if (editable.toString().isNotEmpty()) {
+                                viewModel?.getArtistBySearch(editable.toString())
+                                    ?.observe(this@MainActivity,
+                                        Observer { artists ->
+                                            musicAdapter.differ.submitList(artists)
+                                        })
+                            } else {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    R.string.offline_msg,
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                viewModel?.getSavedMusic()
+                                    ?.observe(this@MainActivity, Observer { musics ->
+                                        musicAdapter.differ.submitList(musics)
+                                        Log.d(TAG, musics.toString())
+                                    })
+                            }
 
+                        }
                     }
                 }
             }
-        }
 
 
 
+            try {
+                viewModel?.searchedMusics?.observe(this, Observer { response ->
+                    when (response) {
+                        is Resource.Success -> {
+                            hideProgressBar()
+                            response.data?.let { musicResponse ->
+                                musicAdapter.differ.submitList(musicResponse.results)
+                                Log.d(TAG, response.toString())
+                            }
+                        }
 
+                        is Resource.Error -> {
+                            hideProgressBar()
+                            response.message?.let { message ->
+                                Log.d(TAG, "Error:$message")
+                                txtErr.visibility = View.VISIBLE
+                                txtErr.text = message
+                            }
+                        }
 
-        try {
-            viewModel?.searchedMusics?.observe(this, Observer { response ->
-                when (response) {
-                    is Resource.Success -> {
-                        hideProgressBar()
-                        response.data?.let { musicResponse ->
-                            musicAdapter.differ.submitList(musicResponse.results)
-                            Log.d(TAG, response.toString())
+                        is Resource.Loading -> {
+                            showProgressBar()
                         }
                     }
-
-                    is Resource.Error -> {
-                        hideProgressBar()
-                        response.message?.let { message ->
-                            Log.d(TAG, "Error:$message")
-                            txtErr.visibility = View.VISIBLE
-                            txtErr.text = message
-                        }
-                    }
-
-                    is Resource.Loading -> {
-                        showProgressBar()
-                    }
-                }
-            })
-        } catch (e: Exception) {
-            Log.d(TAG, e.toString())
-        }
-
-        try {
-            musicAdapter.setOnItemClickListener {
-                viewModel?.saveMusic(it)
-
+                })
+            } catch (e: Exception) {
+                Log.d(TAG, e.toString())
             }
 
-        } catch (e: Exception) {
-            Log.d(TAG, e.toString())
+            try {
+                musicAdapter.setOnItemClickListener {
+                    viewModel?.saveMusic(it)
+
+                }
+
+            } catch (e: Exception) {
+                Log.d(TAG, e.toString())
+            }
         }
+        else{
+            Toast.makeText(this,"You are Offline",Toast.LENGTH_LONG).show()
+        }
+
     }
 
     private fun setUpRecyclerView() {
