@@ -15,9 +15,6 @@ data class Music(
     val artistName: String,
     val artistViewUrl: String,
     val artworkUrl100: String,
-    val artworkUrl30: String,
-    val artworkUrl60: String,
-
 )
 
 /*
